@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import styles from '../auth.module.css';
+import { deriveKey } from '@/lib/crypto';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -29,8 +30,18 @@ export default function LoginPage() {
         throw new Error(data.error || 'Invalid credentials');
       }
 
-      router.push('/');
-      router.refresh(); // Refresh the router to reflect authentication state
+      const { salt } = data;
+
+      const masterKey = await deriveKey(
+        formData.password,
+        salt
+      );
+
+      (window as any).masterKey = masterKey;
+
+      router.push('/passwords');
+      router.refresh();
+
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -72,8 +83,8 @@ export default function LoginPage() {
             {error && <div className="error-message">{error}</div>}
           </div>
 
-          <button 
-            type="submit" 
+          <button
+            type="submit"
             className={`btn-primary ${styles.submitBtn}`}
             disabled={loading}
           >

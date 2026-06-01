@@ -11,53 +11,74 @@ export async function POST(req: NextRequest) {
     const { email, password } = await req.json();
 
     if (!email || !password) {
-      return NextResponse.json({ error: 'Email and password are required' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Email and password are required' },
+        { status: 400 }
+      );
     }
 
-    // Find the user and include the password field for verification
-    const user = await User.findOne({ email }).select('+password');
+    // Get user + password + salt
+    const user = await User.findOne({ email }).select('+password salt');
+
     if (!user) {
-      return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 });
+      return NextResponse.json(
+        { error: 'Invalid email or password' },
+        { status: 401 }
+      );
     }
 
-    // Check password
+    // Verify password
     const isMatch = await bcrypt.compare(password, user.password);
+
     if (!isMatch) {
-      return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 });
+      return NextResponse.json(
+        { error: 'Invalid email or password' },
+        { status: 401 }
+      );
     }
 
-    // Generate tokens
-    const { accessToken, refreshToken } = generateTokens(user._id.toString());
+    // Generate auth tokens
+    const { accessToken, refreshToken } = generateTokens(
+      user._id.toString()
+    );
 
     const response = NextResponse.json(
-      { 
+      {
         message: 'Login successful',
-        user: { id: user._id, email: user.email, name: user.name } 
+        user: {
+          id: user._id,
+          email: user.email,
+          name: user.name,
+        },
+        salt: user.salt, 
       },
       { status: 200 }
     );
 
-    // Set cookies
+    // Cookies (AUTH ONLY)
     response.cookies.set('accessToken', accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
-      maxAge: 15 * 60, // 15 minutes
-      path: '/'
+      maxAge: 15 * 60,
+      path: '/',
     });
 
     response.cookies.set('refreshToken', refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
-      maxAge: 7 * 24 * 60 * 60, // 7 days
-      path: '/'
+      maxAge: 7 * 24 * 60 * 60,
+      path: '/',
     });
 
     return response;
 
   } catch (error: any) {
     console.error('Login Error:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Internal Server Error' },
+      { status: 500 }
+    );
   }
 }

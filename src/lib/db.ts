@@ -1,20 +1,26 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
 const MONGODB_URI = process.env.MONGODB_URI;
+const MONGODB_DB = process.env.MONGODB_DB;
 
 if (!MONGODB_URI) {
-  throw new Error('Please define the MONGODB_URI environment variable inside .env.local');
+  throw new Error("Please define MONGODB_URI in .env.local");
+}
+
+if (!MONGODB_DB) {
+  throw new Error("Please define MONGODB_DB in .env.local");
 }
 
 /**
- * Global is used here to maintain a cached connection across hot reloads
- * in development. This prevents connections growing exponentially
- * during API Route usage.
+ * Cached connection (important for Next.js hot reload)
  */
 let cached = (global as any).mongoose;
 
 if (!cached) {
-  cached = (global as any).mongoose = { conn: null, promise: null };
+  cached = (global as any).mongoose = {
+    conn: null,
+    promise: null,
+  };
 }
 
 async function connectToDatabase() {
@@ -23,24 +29,26 @@ async function connectToDatabase() {
   }
 
   if (!cached.promise) {
-    const opts = {
+    cached.promise = mongoose.connect(MONGODB_URI as string, {
       bufferCommands: false,
-    };
-
-    cached.promise = mongoose.connect(MONGODB_URI as string, opts).then((mongoose) => {
-      console.log('Connected to MongoDB successfully ✨');
-      return mongoose;
     });
   }
 
   try {
-    cached.conn = await cached.promise;
-  } catch (e) {
-    cached.promise = null;
-    throw e;
-  }
+    const mongooseInstance = await cached.promise;
 
-  return cached.conn;
+    // 👇 IMPORTANT: select DB dynamically
+    cached.conn = mongooseInstance.connection.useDb(MONGODB_DB as string);
+
+    console.log(
+      `Connected to MongoDB ✨ (DB: ${MONGODB_DB})`
+    );
+
+    return cached.conn;
+  } catch (err) {
+    cached.promise = null;
+    throw err;
+  }
 }
 
 export default connectToDatabase;
