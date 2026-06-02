@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import connectToDatabase from "@/lib/db";
 import Vault from "@/models/Vault";
-import { verifyToken } from "@/lib/auth";
+import { verifyToken } from "@/lib/jwt";
 
 export async function POST(req: NextRequest) {
   try {

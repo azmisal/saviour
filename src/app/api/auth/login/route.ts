@@ -2,12 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import connectToDatabase from '@/lib/db';
 import User from '@/models/User';
-import { generateTokens } from '@/lib/auth';
+import { generateTokens } from '@/lib/jwt';
 
 export async function POST(req: NextRequest) {
   try {
     await connectToDatabase();
-    
+
     const { email, password } = await req.json();
 
     if (!email || !password) {
@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
           email: user.email,
           name: user.name,
         },
-        salt: user.salt, 
+        salt: user.salt,
       },
       { status: 200 }
     );

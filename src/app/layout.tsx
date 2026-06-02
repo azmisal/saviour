@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
-
+import { AuthProvider } from '@/contexts/AuthContext';
+import { CryptoProvider } from '@/contexts/CryptoContext';
 import Navbar from '@/components/navbar/Navbar';
 
 export const metadata: Metadata = {
@@ -16,10 +17,14 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <div className="min-h-screen">
-          <Navbar />
-          {children}
-        </div>
+        <AuthProvider>
+          <CryptoProvider>
+            <div className="min-h-screen">
+              <Navbar />
+              {children}
+            </div>
+          </CryptoProvider>
+        </AuthProvider>
       </body>
     </html>
   );

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
 import connectToDatabase from '@/lib/db';
 import User from '@/models/User';
-import { generateTokens } from '@/lib/auth';
+import { generateTokens } from '@/lib/jwt';
 
 export async function POST(req: NextRequest) {
   try {
@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
     ) as { id: string };
 
     await connectToDatabase();
-    
+
     // Check if the user still exists
     const user = await User.findById(decoded.id);
     if (!user) {
@@ -31,7 +31,15 @@ export async function POST(req: NextRequest) {
     const tokens = generateTokens(user._id.toString());
 
     const response = NextResponse.json(
-      { message: 'Token refreshed successfully' },
+      {
+        message: 'Token refreshed successfully',
+        user: {
+          id: user._id.toString(),
+          email: user.email,
+          name: user.name,
+        },
+        salt: user.salt,
+      },
       { status: 200 }
     );
 

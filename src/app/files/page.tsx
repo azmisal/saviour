@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState, useEffect } from "react";
-import { encryptData, decryptData } from "@/lib/crypto";
-import { fetchVault } from "@/lib/vaultApi";
-import { useRouter } from "next/navigation";
+import React, { useEffect, useState } from 'react';
+import { encryptData, decryptData } from '@/lib/crypto';
+import { fetchVault } from '@/lib/vaultApi';
+import { useRouter } from 'next/navigation';
+import { useCrypto } from '@/contexts/CryptoContext';
 
 type FileItem = {
   id: string;
@@ -13,29 +14,32 @@ type FileItem = {
 
 export default function FilesPage() {
   const [items, setItems] = useState<FileItem[]>([]);
+
   const [title, setTitle] = useState('');
   const [file, setFile] = useState<File | null>(null);
+
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+
   const router = useRouter();
+
+  const { masterKey } = useCrypto();
 
   // =========================
   // LOAD + DECRYPT FILES
   // =========================
   useEffect(() => {
-    const load = async () => {
+    const loadFiles = async () => {
       try {
-        const masterKey = (window as any).masterKey;
-        if (!masterKey) return;
-        console.warn("No master key available - redirecting to login");
-        router.push('/login');
-        return;
+        if (!masterKey) {
+          return;
+        }
 
-        const items = await fetchVault("file");
+        const vaultItems = await fetchVault('file');
 
-        const decrypted = await Promise.all(
-          items.map(async (item: any) => {
-            const url = await decryptData(
+        const decryptedItems: FileItem[] = await Promise.all(
+          vaultItems.map(async (item: any) => {
+            const decryptedUrl = await decryptData(
               item.data,
               item.iv,
               masterKey
@@ -44,101 +48,119 @@ export default function FilesPage() {
             return {
               id: item._id,
               title: item.title || item.filename,
-              url,
+              url: decryptedUrl,
             };
           })
         );
 
-        setItems(decrypted);
+        setItems(decryptedItems);
+
       } catch (err) {
-        console.error("File load error:", err);
+        console.error('File load error:', err);
+        setError('Failed to load files');
       }
     };
 
-    load();
-  }, []);
+    loadFiles();
+  }, [masterKey]);
 
   // =========================
-  // UI HELPERS
+  // HELPERS
   // =========================
   const clearNotice = () => {
-    window.setTimeout(() => setSuccessMessage(''), 1800);
+    setTimeout(() => {
+      setSuccessMessage('');
+    }, 1800);
   };
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const selected = event.target.files?.[0] ?? null;
+  const handleFileChange = (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const selected = event.target.files?.[0] || null;
     setFile(selected);
   };
 
   // =========================
   // UPLOAD + SAVE FILE
   // =========================
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (
+    event: React.FormEvent<HTMLFormElement>
+  ) => {
     event.preventDefault();
-    setError('');
 
     try {
+      setError('');
+
       if (!title.trim()) {
-        setError('Title is required.');
+        setError('Title is required');
         return;
       }
 
       if (!file) {
-        setError('File is required.');
+        setError('File is required');
         return;
       }
 
-      const masterKey = (window as any).masterKey;
-
       if (!masterKey) {
-        setError('Session expired. Please login again.');
+        setError('Encryption unavailable');
         return;
       }
 
       // =========================
       // 1. UPLOAD TO CLOUDINARY
       // =========================
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append(
-        "upload_preset",
-        process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET!
+      const uploadData = new FormData();
+
+      uploadData.append('file', file);
+
+      uploadData.append(
+        'upload_preset',
+        process.env
+          .NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET!
       );
 
       const cloudRes = await fetch(
         `https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/upload`,
         {
-          method: "POST",
-          body: formData,
+          method: 'POST',
+          body: uploadData,
         }
       );
 
       const cloudData = await cloudRes.json();
 
       if (!cloudRes.ok) {
-        throw new Error("File upload failed");
+        throw new Error('File upload failed');
       }
 
       const fileUrl = cloudData.secure_url;
 
       // =========================
-      // 2. ENCRYPT URL
+      // 2. ENCRYPT FILE URL
       // =========================
-      const encrypted = await encryptData(fileUrl, masterKey);
+      const encrypted = await encryptData(
+        fileUrl,
+        masterKey
+      );
 
       // =========================
-      // 3. SAVE TO BACKEND
+      // 3. SAVE ENCRYPTED DATA
       // =========================
-      const res = await fetch("/api/vault", {
-        method: "POST",
+      const res = await fetch('/api/vault', {
+        method: 'POST',
+
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
-        credentials: "include",
+
+        credentials: 'include',
+
         body: JSON.stringify({
-          type: "file",
+          type: 'file',
+
           filename: file.name,
           title: title.trim(),
+
           data: encrypted.data,
           iv: encrypted.iv,
         }),
@@ -147,27 +169,30 @@ export default function FilesPage() {
       const result = await res.json();
 
       if (!res.ok) {
-        throw new Error(result.error || "Save failed");
+        throw new Error(result.error || 'Save failed');
       }
 
       // =========================
       // 4. UPDATE UI
       // =========================
       const newItem: FileItem = {
-        id: result.id || crypto.randomUUID(),
+        id: result.id,
         title,
         url: fileUrl,
       };
 
-      setItems((c) => [newItem, ...c]);
+      setItems((prev) => [newItem, ...prev]);
 
       setTitle('');
       setFile(null);
 
       setSuccessMessage('File saved securely');
+
       clearNotice();
 
     } catch (err: any) {
+      console.error(err);
+
       setError(err.message || 'Upload failed');
     }
   };
@@ -177,50 +202,80 @@ export default function FilesPage() {
   // =========================
   const handleDownload = (item: FileItem) => {
     const link = document.createElement('a');
+
     link.href = item.url;
     link.download = item.title;
+
     document.body.appendChild(link);
+
     link.click();
+
     link.remove();
   };
 
+  // =========================
+  // UI
+  // =========================
   return (
     <main className="page-shell">
+
       <header className="page-header">
         <div>
-          <p className="eyebrow">Files</p>
-          <h1 className="page-title">Saved files</h1>
+          <p className="eyebrow">
+            Files
+          </p>
+
+          <h1 className="page-title">
+            Saved files
+          </h1>
+
           <p className="page-copy">
-            Save a title and file securely (encrypted URL stored in database).
+            File URLs are encrypted before storage
           </p>
         </div>
       </header>
 
-      {/* ========================= */}
-      {/* UPLOAD FORM */}
-      {/* ========================= */}
+      {/* FORM */}
       <section className="glass-panel page-section p-8">
+
         <div className="section-heading">
-          <h2 className="section-title">Add file entry</h2>
+
+          <h2 className="section-title">
+            Add file entry
+          </h2>
+
           {successMessage && (
-            <span className="notice-pill">{successMessage}</span>
+            <span className="notice-pill">
+              {successMessage}
+            </span>
           )}
         </div>
 
-        <form className="form-grid" onSubmit={handleSubmit}>
+        <form
+          className="form-grid"
+          onSubmit={handleSubmit}
+        >
           <div className="form-group">
-            <label className="form-label">Title</label>
+            <label className="form-label">
+              Title
+            </label>
+
             <input
               type="text"
               className="input-field"
               value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Resume, invoice, design file"
+              onChange={(e) =>
+                setTitle(e.target.value)
+              }
+              placeholder="Resume, invoice..."
             />
           </div>
 
           <div className="form-group">
-            <label className="form-label">File</label>
+            <label className="form-label">
+              File
+            </label>
+
             <input
               type="file"
               className="input-field"
@@ -228,32 +283,49 @@ export default function FilesPage() {
             />
           </div>
 
-          <button type="submit" className="btn-primary">
+          <button
+            type="submit"
+            className="btn-primary"
+          >
             Save file
           </button>
         </form>
 
-        {error && <div className="error-message">{error}</div>}
+        {error && (
+          <div className="error-message">
+            {error}
+          </div>
+        )}
       </section>
 
-      {/* ========================= */}
       {/* FILE LIST */}
-      {/* ========================= */}
       <section className="page-section">
-        <h2 className="section-title">Stored files</h2>
+
+        <h2 className="section-title">
+          Stored files
+        </h2>
 
         <div className="card-grid">
+
           {items.length === 0 ? (
             <div className="card">
               No files saved yet.
             </div>
           ) : (
             items.map((item) => (
-              <article key={item.id} className="card">
+              <article
+                key={item.id}
+                className="card"
+              >
                 <div className="card-row">
                   <div>
-                    <p className="card-label">Title</p>
-                    <p className="card-value">{item.title}</p>
+                    <p className="card-label">
+                      Title
+                    </p>
+
+                    <p className="card-value">
+                      {item.title}
+                    </p>
                   </div>
                 </div>
 
@@ -261,7 +333,9 @@ export default function FilesPage() {
                   <button
                     type="button"
                     className="secondary-btn"
-                    onClick={() => handleDownload(item)}
+                    onClick={() =>
+                      handleDownload(item)
+                    }
                   >
                     Download
                   </button>

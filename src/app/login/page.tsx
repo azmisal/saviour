@@ -1,16 +1,20 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import styles from '../auth.module.css';
-import { deriveKey } from '@/lib/crypto';
+import { useAuth } from '@/contexts/AuthContext';
+import { useCrypto } from '@/contexts/CryptoContext';
 
 export default function LoginPage() {
   const router = useRouter();
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const { user, checkAuth, login } = useAuth();
+
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -18,39 +22,25 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || 'Invalid credentials');
+    
+      const result = await login(formData);
+      if (!result) {
+        setError('Login failed. Please check your credentials and try again.');
+        return;
       }
-
-      const { salt } = data;
-
-      const masterKey = await deriveKey(
-        formData.password,
-        salt
-      );
-
-      (window as any).masterKey = masterKey;
-
       router.push('/passwords');
-      router.refresh();
-
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      setError('Login failed. Please check your credentials and try again.');
+      console.error('Login error:', err);
     } finally {
       setLoading(false);
     }
+
   };
 
   return (
     <div className={styles.container}>
+
       <div className={`glass-panel ${styles.formCard}`}>
         <h1 className={styles.title}>Welcome Back</h1>
         <p className={styles.subtitle}>Log in to access your vault.</p>

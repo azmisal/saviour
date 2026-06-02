@@ -1,7 +1,10 @@
 import Link from 'next/link';
 import styles from './page.module.css';
+import { useEffect } from 'react';
 
 export default function Home() {
+
+  
   return (
     <div className={styles.container}>
       <div className={styles.blob1}></div>
