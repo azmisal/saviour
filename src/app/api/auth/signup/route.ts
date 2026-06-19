@@ -1,69 +1,89 @@
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
-import connectToDatabase from '@/lib/db';
+import { connectToDatabase } from '@/lib/db';
 import User from '@/models/User';
-import { generateTokens } from '@/lib/auth';
+import { generateTokens } from '@/lib/jwt';
 
 export async function POST(req: NextRequest) {
   try {
     await connectToDatabase();
-    
+
     const { email, password, name } = await req.json();
 
     if (!email || !password) {
-      return NextResponse.json({ error: 'Email and password are required' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Email and password are required' },
+        { status: 400 }
+      );
     }
 
-    // Check if user already exists
+    // Check existing user
     const existingUser = await User.findOne({ email });
+
     if (existingUser) {
-      return NextResponse.json({ error: 'User already exists' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'User already exists' },
+        { status: 400 }
+      );
     }
 
-    // Hash the password
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
+    // Salt used ONLY for encryption key derivation
+    const encryptionSalt = crypto.randomUUID();
 
-    // Create the user
+    // Password hashing for authentication
+    const hashedPassword = await bcrypt.hash(password, 12);
+
+    // Create user
     const newUser = await User.create({
       email,
       password: hashedPassword,
       name: name || '',
+      salt: encryptionSalt,
     });
 
-    // Generate tokens
-    const { accessToken, refreshToken } = generateTokens(newUser._id.toString());
+    // Generate auth tokens
+    const { accessToken, refreshToken } = generateTokens(
+      newUser._id.toString()
+    );
 
-    // Prepare response
     const response = NextResponse.json(
-      { 
+      {
         message: 'User created successfully',
-        user: { id: newUser._id, email: newUser.email, name: newUser.name } 
+        user: {
+          id: newUser._id,
+          email: newUser.email,
+          name: newUser.name,
+        },
       },
       { status: 201 }
     );
 
-    // Set cookies
+    // Access token cookie
     response.cookies.set('accessToken', accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
-      maxAge: 15 * 60, // 15 minutes
-      path: '/'
+      maxAge: 15 * 60,
+      path: '/',
     });
 
+    // Refresh token cookie
     response.cookies.set('refreshToken', refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
-      maxAge: 7 * 24 * 60 * 60, // 7 days
-      path: '/'
+      maxAge: 7 * 24 * 60 * 60,
+      path: '/',
     });
 
     return response;
 
   } catch (error: any) {
     console.error('Signup Error:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+
+    return NextResponse.json(
+      { error: 'Internal Server Error' },
+      { status: 500 }
+    );
   }
 }
