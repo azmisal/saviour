@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import cloudinary from '@/lib/cloudinary';
-import connectToDatabase from '@/lib/db';
+import {connectToDatabase} from '@/lib/db';
 import { verifyToken } from '@/lib/jwt';
 import User from '@/models/User';
 
