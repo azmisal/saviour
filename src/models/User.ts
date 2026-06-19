@@ -4,6 +4,7 @@ export interface IUser extends Document {
   email: string;
   password?: string;
   name?: string;
+  salt?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -31,6 +32,10 @@ const UserSchema: Schema = new Schema(
       type: String,
       trim: true,
       maxlength: [50, 'Name cannot be more than 50 characters'],
+    },
+    salt: {
+      type: String,
+      required: true, // Don't return salt by default
     },
   },
   {

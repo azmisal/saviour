@@ -1,5 +1,8 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import { AuthProvider } from '@/contexts/AuthContext';
+import { CryptoProvider } from '@/contexts/CryptoContext';
+import Navbar from '@/components/navbar/Navbar';
 
 export const metadata: Metadata = {
   title: 'Saviour | Save Your Stuff',
@@ -14,9 +17,14 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <main className="app-container">
-          {children}
-        </main>
+        <CryptoProvider>
+          <AuthProvider>
+            <div className="min-h-screen">
+              <Navbar />
+              {children}
+            </div>
+          </AuthProvider>
+        </CryptoProvider>
       </body>
     </html>
   );
