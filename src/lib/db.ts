@@ -1,54 +1,53 @@
 import mongoose from "mongoose";
 
-const MONGODB_URI = process.env.MONGODB_URI;
-const MONGODB_DB = process.env.MONGODB_DB;
+const MONGODB_URI = process.env.MONGODB_URI || "";
+const DB_NAME = process.env.DB_NAME;
 
 if (!MONGODB_URI) {
   throw new Error("Please define MONGODB_URI in .env.local");
 }
 
-if (!MONGODB_DB) {
-  throw new Error("Please define MONGODB_DB in .env.local");
+if (!DB_NAME) {
+  throw new Error("Please define DB_NAME in .env.local");
 }
 
-/**
- * Cached connection (important for Next.js hot reload)
- */
-let cached = (global as any).mongoose;
-
-if (!cached) {
-  cached = (global as any).mongoose = {
-    conn: null,
-    promise: null,
-  };
+declare global {
+  // eslint-disable-next-line no-var
+  var mongooseCache:
+    | {
+        conn: typeof mongoose | null;
+        promise: Promise<typeof mongoose> | null;
+      }
+    | undefined;
 }
 
-async function connectToDatabase() {
+const cached = global.mongooseCache ?? {
+  conn: null,
+  promise: null,
+};
+
+global.mongooseCache = cached;
+
+export async function connectToDatabase() {
   if (cached.conn) {
     return cached.conn;
   }
 
   if (!cached.promise) {
-    cached.promise = mongoose.connect(MONGODB_URI as string, {
+    cached.promise = mongoose.connect(MONGODB_URI, {
+      dbName: DB_NAME,
       bufferCommands: false,
     });
   }
 
   try {
-    const mongooseInstance = await cached.promise;
+    cached.conn = await cached.promise;
 
-    // 👇 IMPORTANT: select DB dynamically
-    cached.conn = mongooseInstance.connection.useDb(MONGODB_DB as string);
-
-    console.log(
-      `Connected to MongoDB ✨ (DB: ${MONGODB_DB})`
-    );
+    console.log(`✅ MongoDB connected (${DB_NAME})`);
 
     return cached.conn;
-  } catch (err) {
+  } catch (error) {
     cached.promise = null;
-    throw err;
+    throw error;
   }
 }
-
-export default connectToDatabase;

@@ -6,6 +6,7 @@ import Link from 'next/link';
 import styles from '../auth.module.css';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCrypto } from '@/contexts/CryptoContext';
+import { Eye, EyeOff } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -13,7 +14,7 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { user, checkAuth, login } = useAuth();
-
+  const [showPass, setShowPass] = useState(false)
 
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -22,7 +23,7 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-    
+
       const result = await login(formData);
       if (!result) {
         setError('Login failed. Please check your credentials and try again.');
@@ -40,7 +41,6 @@ export default function LoginPage() {
 
   return (
     <div className={styles.container}>
-
       <div className={`glass-panel ${styles.formCard}`}>
         <h1 className={styles.title}>Welcome Back</h1>
         <p className={styles.subtitle}>Log in to access your vault.</p>
@@ -60,16 +60,40 @@ export default function LoginPage() {
           </div>
 
           <div className="form-group">
-            <label className="form-label" htmlFor="password">Password</label>
-            <input
-              id="password"
-              type="password"
-              required
-              className="input-field"
-              placeholder="••••••••"
-              value={formData.password}
-              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-            />
+            <label className="form-label" htmlFor="password">
+              Password
+            </label>
+
+            <div style={{ position: "relative" }}>
+              <input
+                id="password"
+                type={showPass ? "text" : "password"}
+                required
+                className="input-field"
+                placeholder="••••••••"
+                value={formData.password}
+                onChange={(e) =>
+                  setFormData({ ...formData, password: e.target.value })
+                }
+              />
+
+              <button
+                type="button"
+                onClick={() => setShowPass(!showPass)}
+                style={{
+                  position: "absolute",
+                  right: "12px",
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                }}
+              >
+                {showPass ? <Eye size={18} /> : <EyeOff size={18} />}
+              </button>
+            </div>
+
             {error && <div className="error-message">{error}</div>}
           </div>
 

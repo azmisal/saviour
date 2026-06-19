@@ -4,13 +4,16 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import styles from '../auth.module.css';
+import { Eye, EyeOff } from "lucide-react";
 
 export default function SignupPage() {
   const router = useRouter();
   const [formData, setFormData] = useState({ name: '', email: '', password: '' });
+  const [confirmPass, setConfirmPass] = useState("");
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -71,22 +74,80 @@ export default function SignupPage() {
           </div>
 
           <div className="form-group">
-            <label className="form-label" htmlFor="password">Password</label>
-            <input
-              id="password"
-              type="password"
-              required
-              className="input-field"
-              placeholder="••••••••"
-              minLength={6}
-              value={formData.password}
-              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-            />
+            <label className="form-label" htmlFor="password">
+              Password
+            </label>
+
+            <div style={{ position: "relative" }}>
+              <input
+                id="password"
+                type={showPassword ? "text" : "password"}
+                required
+                className="input-field"
+                placeholder="Password"
+                minLength={6}
+                value={formData.password}
+                onChange={(e) =>
+                  setFormData({ ...formData, password: e.target.value })
+                }
+              />
+
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                style={{
+                  position: "absolute",
+                  right: "12px",
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                }}
+              >
+                {showPassword ? <Eye size={18} /> : <EyeOff size={18}/>}
+              </button>
+            </div>
+
             {error && <div className="error-message">{error}</div>}
           </div>
 
-          <button 
-            type="submit" 
+          <div className="form-group">
+            <label className="form-label" htmlFor="confirm-password">
+              Confirm Password
+            </label>
+
+            <div style={{ position: "relative" }}>
+              <input
+                id="confirm-password"
+                type={showConfirmPassword ? "text" : "password"}
+                required
+                className="input-field"
+                placeholder="Confirm Password"
+                minLength={6}
+                value={confirmPass}
+                onChange={(e) => setConfirmPass(e.target.value)}
+              />
+
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                style={{
+                  position: "absolute",
+                  right: "12px",
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                }}
+              >
+                {showConfirmPassword ? <Eye size={18} /> : <EyeOff size={18}/>}
+              </button>
+            </div>
+          </div>
+          <button
+            type="submit"
             className={`btn-primary ${styles.submitBtn}`}
             disabled={loading}
           >

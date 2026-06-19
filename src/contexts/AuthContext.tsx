@@ -78,20 +78,13 @@ export function AuthProvider({
             try {
                 setIsLoading(true);
 
-                // 1. check existing access token
                 let ok = await checkAuth();
-
-                // 2. if expired -> refresh session
                 if (!ok) {
                     ok = await refreshAuth();
                 }
-
-                // 3. restore crypto only if auth exists
                 if (ok) {
                     const cryptoOk =
                         await restoreCrypto();
-
-                    // auth exists but crypto missing
                     if (!cryptoOk) {
                         await logout();
                         return;
@@ -110,7 +103,7 @@ export function AuthProvider({
         async (): Promise<boolean> => {
             try {
                 const res = await axios.get(
-                    `${process.env.NEXT_PUBLIC_API_BASE_URL}${endPoints.auth.authCheck}`,
+                    `${process.env.NEXT_PUBLIC_API_BASE_URL}/${endPoints.auth.authCheck}`,
                     {
                         withCredentials: true,
                     }

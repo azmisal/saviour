@@ -17,14 +17,14 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <AuthProvider>
-          <CryptoProvider>
+        <CryptoProvider>
+          <AuthProvider>
             <div className="min-h-screen">
               <Navbar />
               {children}
             </div>
-          </CryptoProvider>
-        </AuthProvider>
+          </AuthProvider>
+        </CryptoProvider>
       </body>
     </html>
   );

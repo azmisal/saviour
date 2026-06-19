@@ -29,3 +29,11 @@ export function verifyToken(token: string) {
     return null;
   }
 }
+
+export function verifyRefreshToken(token: string) {
+  try {
+    return jwt.verify(token, REFRESH_SECRET) as { id: string };
+  } catch (err) {
+    return null;
+  }
+}

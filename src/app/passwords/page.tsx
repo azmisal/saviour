@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { encryptData, decryptData } from '@/lib/crypto';
 import { fetchVault } from '@/lib/vaultApi';
 import { useCrypto } from '@/contexts/CryptoContext';
+import { Eye, EyeOff } from "lucide-react";
 
 type VaultItem = {
   id: string;
@@ -16,7 +17,7 @@ type VaultItem = {
 
 export default function PasswordsPage() {
   const [items, setItems] = useState<VaultItem[]>([]);
-
+  const [showPass, setShowPass] = useState(false)
   const [form, setForm] = useState({
     website: '',
     username: '',
@@ -260,18 +261,28 @@ export default function PasswordsPage() {
             className="p-3 rounded-xl bg-black/40 border border-white/10"
           />
 
-          <input
-            type="password"
-            placeholder="Password"
-            value={form.password}
-            onChange={(e) =>
-              setForm({
-                ...form,
-                password: e.target.value,
-              })
-            }
-            className="p-3 rounded-xl bg-black/40 border border-white/10"
-          />
+          <div className="relative">
+            <input
+              type={showPass ? "text" : "password"}
+              placeholder="Password"
+              value={form.password}
+              onChange={(e) =>
+                setForm({
+                  ...form,
+                  password: e.target.value,
+                })
+              }
+              className="w-full p-3 pr-12 rounded-xl bg-black/40 border border-white/10"
+            />
+
+            <button
+              type="button"
+              onClick={() => setShowPass(!showPass)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-400 hover:text-white"
+            >
+              {showPass ? <Eye size={18} /> : <EyeOff size={18} />}
+            </button>
+          </div>
 
           <button
             type="submit"
@@ -343,7 +354,7 @@ export default function PasswordsPage() {
                         }
                         className="px-2 py-1 text-xs rounded-lg border border-white/10"
                       >
-                        {item.show ? 'Hide' : 'View'}
+                        {item.show ? <EyeOff size={18} /> : <Eye size={18} />}
                       </button>
 
                     </div>

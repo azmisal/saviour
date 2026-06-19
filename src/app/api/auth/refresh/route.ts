@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
-import connectToDatabase from '@/lib/db';
+import { connectToDatabase } from '@/lib/db';
 import User from '@/models/User';
 import { generateTokens } from '@/lib/jwt';
 
