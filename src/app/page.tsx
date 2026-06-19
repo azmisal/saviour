@@ -1,7 +1,24 @@
+'use client';
+
 import Link from 'next/link';
 import styles from './page.module.css';
+import { useEffect } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
+import { useRouter } from 'next/navigation';
+
 
 export default function Home() {
+
+
+  const {isAuthenticated } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+        if(isAuthenticated){
+          router.push('/password')
+        }
+    }, []);
+
 
 
   return (
