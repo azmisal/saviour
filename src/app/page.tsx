@@ -10,14 +10,14 @@ import { useRouter } from 'next/navigation';
 export default function Home() {
 
 
-  const {isAuthenticated } = useAuth();
+  const {user,isAuthenticated } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
         if(isAuthenticated){
-          router.push('/password')
+          router.push('/passwords')
         }
-    }, []);
+    }, [user,isAuthenticated]);
 
 
 
