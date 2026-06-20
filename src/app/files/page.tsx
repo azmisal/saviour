@@ -6,6 +6,7 @@ import { fetchVault } from '@/lib/vaultApi';
 import { useRouter } from 'next/navigation';
 import { useCrypto } from '@/contexts/CryptoContext';
 import { FileUp, FileText, Download, ShieldCheck, UploadCloud } from 'lucide-react';
+import axios from 'axios';
 
 type FileItem = { id: string; title: string; url: string };
 
@@ -47,6 +48,27 @@ export default function FilesPage() {
     setFile(event.target.files?.[0] || null);
   };
 
+  const cloudinaryUpload = async (file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append(
+      "upload_preset",
+      process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET!
+    );
+
+    try {
+      const response = await axios.post(
+        `https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/auto/upload`,
+        formData
+      );
+
+      return response.data.secure_url;
+    } catch (error: any) {
+      throw error;
+    }
+  }
+
+
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     try {
@@ -56,34 +78,24 @@ export default function FilesPage() {
       if (!masterKey) return setError('Encryption unavailable');
 
       setUploading(true);
-      const uploadData = new FormData();
-      uploadData.append('file', file);
-      uploadData.append('upload_preset', process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET!);
 
-      const cloudRes = await fetch(
-        `https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/upload`,
-        { method: 'POST', body: uploadData }
-      );
-      const cloudData = await cloudRes.json();
-      if (!cloudRes.ok) throw new Error('File upload failed');
-
-      const fileUrl = cloudData.secure_url;
+      const fileUrl = await cloudinaryUpload(file)
       const encrypted = await encryptData(fileUrl, masterKey);
+      const dataObj = {
+        type: 'file',
+        filename: file.name,
+        title: title.trim(),
+        data: encrypted.data,
+        iv: encrypted.iv,
+      }
 
-      const res = await fetch('/api/vault', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          type: 'file',
-          filename: file.name,
-          title: title.trim(),
-          data: encrypted.data,
-          iv: encrypted.iv,
-        }),
-      });
-      const result = await res.json();
-      if (!res.ok) throw new Error(result.error || 'Save failed');
+      const res = await axios.post(`${process.env.NEXT_PUBLIC_API_BASE_URL}/vault`,
+        dataObj
+        ,
+        { withCredentials: true }
+      );
+      const result = await res.data;
+      if (!(res.status === 200 || res.status === 201)) throw new Error(result.error || 'Save failed');
 
       const newItem: FileItem = { id: result.id, title, url: fileUrl };
       setItems((prev) => [newItem, ...prev]);
@@ -98,6 +110,8 @@ export default function FilesPage() {
       setUploading(false);
     }
   };
+
+
 
   const handleDownload = (item: FileItem) => {
     const link = document.createElement('a');
